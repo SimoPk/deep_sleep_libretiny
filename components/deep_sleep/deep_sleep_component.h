@@ -133,7 +133,6 @@ class DeepSleepComponent : public Component {
 #endif
   optional<uint32_t> run_duration_;
   bool next_enter_deep_sleep_{false};
-  bool prevent_{false};
   bool prepare_pin(esphome::InternalGPIOPin *, WakeupPinMode);
 };
 

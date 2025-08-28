@@ -12,6 +12,8 @@ namespace deep_sleep {
 
 static const char *const TAG = "deep_sleep";
 
+static const char *const TIMEOUT_NAME = "deep_sleep_timeout";
+
 bool global_has_deep_sleep = false;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 optional<uint32_t> DeepSleepComponent::get_run_duration_() const {
@@ -40,7 +42,7 @@ void DeepSleepComponent::setup() {
   const optional<uint32_t> run_duration = get_run_duration_();
   if (run_duration.has_value()) {
     ESP_LOGI(TAG, "Scheduling Deep Sleep to start in %" PRIu32 " ms", *run_duration);
-    this->set_timeout(*run_duration, [this]() { this->begin_sleep(); });
+    this->set_timeout(TIMEOUT_NAME, *run_duration, [this]() { this->begin_sleep(); });
   } else {
     ESP_LOGD(TAG, "Not scheduling Deep Sleep, as no run duration is configured.");
   }
@@ -123,10 +125,6 @@ bool DeepSleepComponent::prepare_pin(InternalGPIOPin *pin, WakeupPinMode pin_mod
 
 void DeepSleepComponent::set_run_duration(uint32_t time_ms) { this->run_duration_ = time_ms; }
 void DeepSleepComponent::begin_sleep(bool manual) {
-  if (this->prevent_ && !manual) {
-    this->next_enter_deep_sleep_ = true;
-    return;
-  }
 #if defined(USE_ESP32) || defined(USE_LIBRETINY)
   if (!prepare_pin(this->wakeup_pin_, this->wakeup_pin_mode_))
     return;
@@ -209,8 +207,8 @@ void DeepSleepComponent::begin_sleep(bool manual) {
 #endif
 }
 float DeepSleepComponent::get_setup_priority() const { return setup_priority::LATE; }
-void DeepSleepComponent::prevent_deep_sleep() { this->prevent_ = true; }
-void DeepSleepComponent::allow_deep_sleep() { this->prevent_ = false; }
+void DeepSleepComponent::prevent_deep_sleep() { this->cancel_timeout(TIMEOUT_NAME); }
+void DeepSleepComponent::allow_deep_sleep() { this->setup(); }
 
 }  // namespace deep_sleep
 }  // namespace esphome
