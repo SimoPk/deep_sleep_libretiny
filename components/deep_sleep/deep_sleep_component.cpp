@@ -41,8 +41,12 @@ void DeepSleepComponent::setup() {
 
   const optional<uint32_t> run_duration = get_run_duration_();
   if (run_duration.has_value()) {
-    ESP_LOGI(TAG, "Scheduling Deep Sleep to start in %" PRIu32 " ms", *run_duration);
-    this->set_timeout(TIMEOUT_NAME, *run_duration, [this]() { this->begin_sleep(); });
+    if (!this->prevent_) {
+      ESP_LOGI(TAG, "Scheduling Deep Sleep to start in %" PRIu32 " ms", *run_duration);
+      this->set_timeout(TIMEOUT_NAME, *run_duration, [this]() { this->begin_sleep(); });
+    } else {
+      ESP_LOGD(TAG, "Not scheduling Deep Sleep, as prevent flag is set.");
+    }
   } else {
     ESP_LOGD(TAG, "Not scheduling Deep Sleep, as no run duration is configured.");
   }
@@ -207,8 +211,14 @@ void DeepSleepComponent::begin_sleep(bool manual) {
 #endif
 }
 float DeepSleepComponent::get_setup_priority() const { return setup_priority::LATE; }
-void DeepSleepComponent::prevent_deep_sleep() { this->cancel_timeout(TIMEOUT_NAME); }
-void DeepSleepComponent::allow_deep_sleep() { this->setup(); }
+void DeepSleepComponent::prevent_deep_sleep() {
+  this->prevent_ = true;
+  this->cancel_timeout(TIMEOUT_NAME);
+}
+void DeepSleepComponent::allow_deep_sleep() {
+  this->prevent_ = false;
+  this->setup();
+}
 
 }  // namespace deep_sleep
 }  // namespace esphome
